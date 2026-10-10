@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unfound Tags Analysis • @keshavsoft/json-to-tag</title>
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <style>
+    body {
+      background-color: #f8fafc;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #1e293b;
+    }
+    .metric-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 0.85rem 1rem;
+      text-align: center;
+    }
+    .metric-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .metric-lbl {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 0.25rem;
+    }
+    .table-spec th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background-color: #f1f5f9;
+      color: #475569;
+    }
+    .table-spec td {
+      vertical-align: middle;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+<body class="p-3 p-md-4">
+  <div class="container-fluid" style="max-width: 980px;">
+
+    <!-- Top Navigation / Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
+      <div>
+        <h1 class="h4 fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+          <i class="bi bi-exclamation-octagon-fill text-danger"></i> Unfound Tags Analysis
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-6 fw-normal">Unfound Tags Mode</span>
+        </h1>
+        <p class="text-muted small mb-0">Identify unrecognized, misspelled, or uncataloged tags in your JSON specification.</p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="./show.html" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-display me-1"></i> Visual Renderer (show.html)
+        </a>
+      </div>
+    </div>
+
+    <!-- Category Switcher Tabs -->
+    <ul class="nav nav-pills mb-3 border-bottom pb-2 gap-1">
+      <li class="nav-item">
+        <a class="nav-link text-secondary py-1 px-3 fw-semibold small" href="./AllTags.html">
+          <i class="bi bi-collection me-1"></i> All Tags
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link text-secondary py-1 px-3 fw-semibold small" href="./foundTags.html">
+          <i class="bi bi-patch-check me-1 text-success"></i> Found Tags
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link active bg-danger text-white py-1 px-3 fw-semibold small" href="./unFoundTags.html">
+          <i class="bi bi-exclamation-octagon me-1"></i> Unfound Tags
+        </a>
+      </li>
+      <li class="nav-item ms-auto">
+        <a class="btn btn-outline-primary btn-sm py-1 px-3" href="./show.html">
+          <i class="bi bi-display me-1"></i> Visual Renderer
+        </a>
+      </li>
+    </ul>
+
+    <!-- Minimal Controls Bar -->
+    <div class="d-flex align-items-center gap-2 mb-4 p-2 bg-white rounded border shadow-sm flex-wrap">
+      <label for="jsonFileInput" class="form-label mb-0 fw-semibold small text-secondary">
+        <i class="bi bi-file-earmark-code text-primary me-1"></i>Select JSON:
+      </label>
+      <input type="file" id="jsonFileInput" class="form-control form-control-sm" accept=".json,application/json" style="max-width: 280px;" />
+      <button class="btn btn-outline-danger btn-sm" type="button" id="btnSampleSpec" title="Loads a sample containing custom/unrecognized tags to test">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i> Sample with Unfound Tags
+      </button>
+      <span class="badge bg-light text-secondary border small ms-auto" id="activeFileNameBadge">No file loaded</span>
+    </div>
+
+    <!-- Output Section (hidden until loaded) -->
+    <div id="outputSection" style="display: none;">
+
+      <!-- 1. Metrics Bar for Unfound Tags -->
+      <div class="row g-2 mb-4" id="metricsBar">
+        <div class="col-6 col-md-3">
+          <div class="metric-card border-danger-subtle">
+            <div class="metric-val text-danger" id="statTotalUnfound">0</div>
+            <div class="metric-lbl">Total Unfound Instances</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <div class="metric-val text-dark" id="statUniqueUnfound">0</div>
+            <div class="metric-lbl">Unique Unfound Tags</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card">
+            <div class="metric-val text-secondary" id="statTotalSpec">0</div>
+            <div class="metric-lbl">Total Tags in Spec</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="metric-card" id="statusCardBox">
+            <div class="metric-val text-danger" id="statCatalogStatus">Unrecognized</div>
+            <div class="metric-lbl">Catalog Status</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Diagnostic Story of Unfound Tags Card -->
+      <div class="card shadow-sm border-0 mb-4" id="storyCardContainer">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-shield-exclamation fs-5 text-danger" id="storyIcon"></i>
+            <h6 class="fw-bold mb-0 text-secondary text-uppercase" style="letter-spacing: 0.05em;">Unfound Tags Diagnostic</h6>
+          </div>
+          <div id="storyVerdictBadge"></div>
+        </div>
+        <div class="card-body p-3">
+          <p class="small text-secondary mb-3" id="storyNarrative"></p>
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top">
+            <div class="d-flex flex-wrap align-items-center gap-1" id="tagPillsContainer"></div>
+            <a href="./foundTags.html" class="btn btn-outline-success btn-sm">
+              <i class="bi bi-patch-check me-1"></i> View Found Tags
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Unfound Tags Breakdown Table -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h6 class="fw-bold mb-0 text-secondary text-uppercase" style="letter-spacing: 0.05em;">
+              <i class="bi bi-list-check me-1 text-danger"></i> Unfound Tags Diagnostic Breakdown
+            </h6>
+          </div>
+          <span class="small text-muted" id="matrixDisplayCount"></span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover table-spec mb-0">
+            <thead>
+              <tr>
+                <th style="width: 160px;">Unfound Tag</th>
+                <th style="width: 90px;" class="text-center">Count</th>
+                <th style="width: 90px;" class="text-center">Children?</th>
+                <th style="width: 90px;" class="text-center">Text?</th>
+                <th>Attributes Attached</th>
+                <th style="width: 180px;">Diagnostic Issue</th>
+                <th style="width: 220px;">Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody id="unfoundMatrixTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Script logic -->
+  <script type="module">
+    const fileInput = document.getElementById("jsonFileInput");
+    const btnSampleSpec = document.getElementById("btnSampleSpec");
+    const outputSection = document.getElementById("outputSection");
+    const activeFileNameBadge = document.getElementById("activeFileNameBadge");
+
+    const statTotalUnfound = document.getElementById("statTotalUnfound");
+    const statUniqueUnfound = document.getElementById("statUniqueUnfound");
+    const statTotalSpec = document.getElementById("statTotalSpec");
+    const statCatalogStatus = document.getElementById("statCatalogStatus");
+    const statusCardBox = document.getElementById("statusCardBox");
+
+    const storyIcon = document.getElementById("storyIcon");
+    const storyVerdictBadge = document.getElementById("storyVerdictBadge");
+    const storyNarrative = document.getElementById("storyNarrative");
+    const tagPillsContainer = document.getElementById("tagPillsContainer");
+
+    const unfoundMatrixTbody = document.getElementById("unfoundMatrixTbody");
+    const matrixDisplayCount = document.getElementById("matrixDisplayCount");
+
+    // Sample spec with intentional unfound tags to demonstrate unfound tag detection
+    const SAMPLE_SPEC_WITH_UNFOUND = {
+      tagName: "div",
+      classList: "card p-4 shadow-sm bg-white border",
+      children: [
+        {
+          tagName: "div",
+          classList: "d-flex justify-content-between align-items-center mb-3",
+          children: [
+            { tagName: "h4", classList: "text-primary fw-bold mb-0", textContent: "Diagnostics Demo" },
+            { tagName: "custom-badge", classList: "badge bg-danger text-white", textContent: "Uncataloged Element" }
+          ]
+        },
+        {
+          tagName: "p",
+          classList: "text-muted small mb-3",
+          textContent: "This specification contains intentional custom/uncataloged tags to demonstrate unfound tag analysis."
+        },
+        {
+          tagName: "app-card",
+          attributes: { "theme": "dark", "elevation": "2" },
+          children: [
+            {
+              tagName: "user-avatar",
+              attributes: { "src": "avatar.png", "size": "sm" }
+            },
+            {
+              tagName: "span",
+              textContent: "Valid user label"
+            }
+          ]
+        },
+        {
+          tagName: "div",
+          classList: "d-flex gap-2 mt-3",
+          children: [
+            {
+              tagName: "fancy-button",
+              classList: "btn btn-danger btn-sm",
+              textContent: "Custom Button Action",
+              attributes: { "role": "button", "data-track": "true" }
+            },
+            {
+              tagName: "button",
+              classList: "btn btn-outline-secondary btn-sm",
+              textContent: "Valid Reset",
+              attributes: { "type": "button" }
+            }
+          ]
+        }
+      ]
+    };
+
+    let cachedCatalog = null;
+
+    const fetchCatalog = async () => {
+      if (cachedCatalog) return cachedCatalog;
+      try {
+        let res = await fetch("../tags/tags.json");
+        if (!res.ok) {
+          res = await fetch("https://keshavsoft.github.io/json-to-tag/tags/tags.json");
+        }
+        if (res.ok) {
+          cachedCatalog = await res.json();
+          return cachedCatalog;
+        }
+      } catch (e) {
+        try {
+          const res = await fetch("https://keshavsoft.github.io/json-to-tag/tags/tags.json");
+          if (res.ok) {
+            cachedCatalog = await res.json();
+            return cachedCatalog;
+          }
+        } catch (e2) {
+          console.warn("Could not fetch tags.json", e2);
+        }
+      }
+      return null;
+    };
+
+    const traverseSpec = ({ inNode, inCallback }) => {
+      const localNode = inNode;
+      const localCallback = inCallback;
+
+      if (!localNode) return;
+      if (Array.isArray(localNode)) {
+        localNode.forEach(item => traverseSpec({ inNode: item, inCallback: localCallback }));
+        return;
+      }
+      if (typeof localNode !== "object") return;
+
+      localCallback({ inNode: localNode });
+
+      if (Array.isArray(localNode.children)) {
+        localNode.children.forEach(child => traverseSpec({ inNode: child, inCallback: localCallback }));
+      }
+    };
+
+    const analyzeUnfoundSpecData = ({ inSpec, inCatalog }) => {
+      const localSpec = inSpec;
+      const localCatalog = inCatalog ?? {};
+
+      const catalogKeys = new Set(
+        Object.keys(localCatalog)
+          .filter(k => k !== "$schema")
+          .map(k => k.toLowerCase())
+      );
+
+      const unfoundStats = {};
+      let totalUnfoundInstances = 0;
+      let totalSpecTags = 0;
+
+      traverseSpec({
+        inNode: localSpec,
+        inCallback: ({ inNode }) => {
+          const localCurrent = inNode;
+          const rawTag = localCurrent.tagName;
+          if (typeof rawTag !== "string" || !rawTag.trim()) return;
+
+          const tag = rawTag.trim().toLowerCase();
+          totalSpecTags++;
+
+          const inCat = catalogKeys.has(tag);
+          if (inCat) return; // Only process unfound tags on this page!
+
+          totalUnfoundInstances++;
+
+          if (!unfoundStats[tag]) {
+            unfoundStats[tag] = {
+              tag,
+              count: 0,
+              hasChildren: false,
+              hasText: false,
+              usedAttributes: new Set()
+            };
+          }
+
+          unfoundStats[tag].count++;
+
+          if (Array.isArray(localCurrent.children) && localCurrent.children.length > 0) {
+            unfoundStats[tag].hasChildren = true;
+          }
+          if (typeof localCurrent.textContent === "string" && localCurrent.textContent.trim().length > 0) {
+            unfoundStats[tag].hasText = true;
+          }
+
+          if (localCurrent.attributes && typeof localCurrent.attributes === "object") {
+            Object.keys(localCurrent.attributes).forEach(attr => unfoundStats[tag].usedAttributes.add(attr));
+          }
+          if (localCurrent.classList) {
+            unfoundStats[tag].usedAttributes.add("class");
+          }
+          if (localCurrent.id) {
+            unfoundStats[tag].usedAttributes.add("id");
+          }
+        }
+      });
+
+      const unfoundList = Object.values(unfoundStats);
+
+      return {
+        totalSpecTags,
+        totalUnfoundInstances,
+        uniqueUnfoundCount: unfoundList.length,
+        unfoundTags: unfoundList
+      };
+    };
+
+    const renderUnfoundTable = ({ inTags }) => {
+      const localTags = inTags;
+
+      matrixDisplayCount.textContent = `Showing ${localTags.length} unique unfound tag(s)`;
+
+      if (localTags.length === 0) {
+        unfoundMatrixTbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-5">
+              <div class="text-success mb-2">
+                <i class="bi bi-check-circle-fill fs-2"></i>
+              </div>
+              <h6 class="fw-bold text-success mb-1">No Unfound Tags!</h6>
+              <p class="text-muted small mb-2">All tags in this specification are recognized and valid in <code>tags.json</code>.</p>
+              <a href="./foundTags.html" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-patch-check me-1"></i> View Found Tags
+              </a>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      unfoundMatrixTbody.innerHTML = localTags.map(t => {
+        const usedAttrsArr = Array.from(t.usedAttributes);
+        const usedAttrsHtml = usedAttrsArr.length > 0
+          ? usedAttrsArr.map(a => `<span class="badge bg-danger-subtle text-danger border border-danger-subtle font-monospace me-1 mb-1">${a}</span>`).join("")
+          : `<span class="text-muted small">None</span>`;
+
+        const childrenCheck = t.hasChildren
+          ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Yes (${t.count})</span>`
+          : `<span class="text-muted small">No</span>`;
+
+        const textCheck = t.hasText
+          ? `<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Yes</span>`
+          : `<span class="text-muted small">No</span>`;
+
+        return `
+          <tr>
+            <td>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle font-monospace" style="font-size: 0.85rem;">
+                &lt;${t.tag}&gt;
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-danger rounded-pill">${t.count}</span>
+            </td>
+            <td class="text-center">${childrenCheck}</td>
+            <td class="text-center">${textCheck}</td>
+            <td>${usedAttrsHtml}</td>
+            <td>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                <i class="bi bi-x-circle me-1"></i>Not in tags.json
+              </span>
+            </td>
+            <td>
+              <span class="small text-secondary">
+                Verify spelling or declare tag in <code>tags.json</code>.
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    const processSpecAnalysis = async ({ inSpec, inFileName }) => {
+      const localSpec = inSpec;
+      const localFileName = inFileName ?? "Custom Spec";
+
+      try {
+        sessionStorage.setItem("json_to_tag_active_spec", JSON.stringify(localSpec));
+        sessionStorage.setItem("json_to_tag_active_name", localFileName);
+        if (activeFileNameBadge) {
+          activeFileNameBadge.textContent = localFileName;
+        }
+
+        const tagsCatalog = await fetchCatalog();
+        const analysis = analyzeUnfoundSpecData({ inSpec: localSpec, inCatalog: tagsCatalog });
+
+        // 1. Update Metrics Bar
+        statTotalUnfound.textContent = analysis.totalUnfoundInstances;
+        statUniqueUnfound.textContent = analysis.uniqueUnfoundCount;
+        statTotalSpec.textContent = analysis.totalSpecTags;
+
+        const hasUnfound = analysis.uniqueUnfoundCount > 0;
+
+        if (hasUnfound) {
+          statCatalogStatus.textContent = `${analysis.uniqueUnfoundCount} Missing`;
+          statCatalogStatus.className = "metric-val text-danger";
+          storyIcon.className = "bi bi-shield-exclamation fs-5 text-danger";
+
+          storyVerdictBadge.innerHTML = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>${analysis.uniqueUnfoundCount} Unfound Tag(s)</span>`;
+
+          const unrecogNames = analysis.unfoundTags.map(t => `&lt;${t.tag}&gt;`).join(", ");
+          storyNarrative.innerHTML = `Attention required: <strong>${localFileName}</strong> contains <strong>${analysis.totalUnfoundInstances}</strong> instance(s) across <strong>${analysis.uniqueUnfoundCount}</strong> uncataloged tag(s): <code>${unrecogNames}</code>. These tags are missing from <code>tags.json</code> and should be verified or added to the catalog.`;
+
+          tagPillsContainer.innerHTML = analysis.unfoundTags.map(t => {
+            return `<span class="badge border bg-danger-subtle text-danger border-danger font-monospace me-1 mb-1" style="font-size: 0.8rem;">&lt;${t.tag}&gt; <span class="badge bg-danger rounded-pill ms-1">${t.count}</span></span>`;
+          }).join("");
+        } else {
+          statCatalogStatus.textContent = "0 Missing";
+          statCatalogStatus.className = "metric-val text-success";
+          storyIcon.className = "bi bi-check-circle fs-5 text-success";
+
+          storyVerdictBadge.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>100% Valid (0 Unfound)</span>`;
+
+          storyNarrative.innerHTML = `Great news! <strong>${localFileName}</strong> has <strong>0 unfound tags</strong> out of <strong>${analysis.totalSpecTags}</strong> total tags. Every element used in this JSON specification is fully recognized in <code>tags.json</code>.`;
+
+          tagPillsContainer.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle font-monospace py-1 px-2"><i class="bi bi-check me-1"></i>All tags recognized</span>`;
+        }
+
+        // 2. Render Unfound Matrix
+        renderUnfoundTable({ inTags: analysis.unfoundTags });
+
+        outputSection.style.display = "block";
+      } catch (err) {
+        alert("Error analyzing JSON: " + err.message);
+        console.error(err);
+      }
+    };
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target.result);
+          processSpecAnalysis({ inSpec: json, inFileName: file.name });
+        } catch (err) {
+          alert("Invalid JSON file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    btnSampleSpec.addEventListener("click", () => {
+      processSpecAnalysis({ inSpec: SAMPLE_SPEC_WITH_UNFOUND, inFileName: "Sample with Unfound Tags" });
+    });
+
+    // Auto-restore session spec if available
+    try {
+      const savedSpec = sessionStorage.getItem("json_to_tag_active_spec");
+      const savedName = sessionStorage.getItem("json_to_tag_active_name");
+      if (savedSpec) {
+        processSpecAnalysis({ inSpec: JSON.parse(savedSpec), inFileName: savedName || "Session Spec" });
+      }
+    } catch (e) {
+      // Ignore session errors
+    }
+  </script>
+</body>
+
+</html>
